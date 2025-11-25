@@ -253,7 +253,7 @@ export default function Dashboard() {
       {/* Footer */}
       <footer className="border-t bg-card mt-12">
         <div className="container mx-auto px-4 py-6 text-center text-sm text-muted-foreground">
-          <p>© 2024 Resto Dashboard. Powered by MQTT & Next.js</p>
+          <p>Tugas Akhir IOT Kelompok 3</p>
         </div>
       </footer>
     </div>
