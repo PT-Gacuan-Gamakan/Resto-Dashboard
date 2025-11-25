@@ -13,9 +13,9 @@ jobs:
 
       - name: Update Deployment
         run: |
-            rm -rf /apps/iot
-            mkdir /apps/iot
             mv * /apps/iot
             cd /apps/iot
+            cp /iot/.env .env
             docker compose up -d --build
             docker system prune -af
+            cd && rm -rf /apps/iot/*
