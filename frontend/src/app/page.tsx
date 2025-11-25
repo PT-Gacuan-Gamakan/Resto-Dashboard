@@ -1,13 +1,14 @@
-'use client';
-import Image from 'next/image';
-import { useEffect, useState } from 'react';
-import { getSocket } from '@/lib/socket';
-import { DashboardData, HourlyStats, RealtimeEvent } from '@/types';
-import { StatCard } from '@/components/StatCard';
-import { HourlyChart } from '@/components/HourlyChart';
-import { RealtimeEventFeed } from '@/components/RealtimeEventFeed';
-import { CapacityControl } from '@/components/CapacityControl';
-import { ThemeToggle } from '@/components/ThemeToggle';
+"use client";
+import Image from "next/image";
+import Linked from "next/link";
+import { useEffect, useState } from "react";
+import { getSocket } from "@/lib/socket";
+import { DashboardData, HourlyStats, RealtimeEvent } from "@/types";
+import { StatCard } from "@/components/StatCard";
+import { HourlyChart } from "@/components/HourlyChart";
+import { RealtimeEventFeed } from "@/components/RealtimeEventFeed";
+import { CapacityControl } from "@/components/CapacityControl";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   Users,
   UserCheck,
@@ -15,9 +16,10 @@ import {
   Activity,
   CircleAlert,
   CircleCheck,
-  CircleX
-} from 'lucide-react';
-import Logo from '../images/Desain tanpa judul (3)(1).png'
+  CircleX,
+  Link,
+} from "lucide-react";
+import Logo from "../images/Desain tanpa judul (3)(1).png";
 
 export default function Dashboard() {
   const [dashboardData, setDashboardData] = useState<DashboardData>({
@@ -25,90 +27,95 @@ export default function Dashboard() {
     maxCapacity: 100,
     availableSeats: 100,
     occupancyRate: 0,
-    status: 'closed',
+    status: "closed",
     isOpen: false,
   });
 
   const [hourlyStats, setHourlyStats] = useState<HourlyStats[]>([]);
   const [realtimeEvents, setRealtimeEvents] = useState<RealtimeEvent[]>([]);
-  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting');
+  const [connectionStatus, setConnectionStatus] = useState<
+    "connected" | "connecting" | "disconnected"
+  >("connecting");
 
   useEffect(() => {
     const socket = getSocket();
 
-    socket.on('connect', () => {
-      setConnectionStatus('connected');
+    socket.on("connect", () => {
+      setConnectionStatus("connected");
     });
 
-    socket.on('disconnect', () => {
-      setConnectionStatus('disconnected');
+    socket.on("disconnect", () => {
+      setConnectionStatus("disconnected");
     });
 
-    socket.on('dashboard:update', (data: DashboardData) => {
+    socket.on("dashboard:update", (data: DashboardData) => {
       setDashboardData(data);
     });
 
-    socket.on('stats:hourly', (stats: HourlyStats[]) => {
+    socket.on("stats:hourly", (stats: HourlyStats[]) => {
       setHourlyStats(stats);
     });
 
-    socket.on('visitor:event', (event: RealtimeEvent) => {
+    socket.on("visitor:event", (event: RealtimeEvent) => {
       setRealtimeEvents((prev) => [event, ...prev].slice(0, 20));
     });
 
     // Fetch initial data
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard`)
-      .then(res => res.json())
-      .then(data => setDashboardData(data))
+      .then((res) => res.json())
+      .then((data) => setDashboardData(data))
       .catch(console.error);
 
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/stats/hourly`)
-      .then(res => res.json())
-      .then(stats => setHourlyStats(stats))
+      .then((res) => res.json())
+      .then((stats) => setHourlyStats(stats))
       .catch(console.error);
 
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/recent`)
-      .then(res => res.json())
-      .then(events => {
+      .then((res) => res.json())
+      .then((events) => {
         const formattedEvents = events.map((e: any) => ({
           id: e.id,
           type: e.type,
           timestamp: e.timestamp,
-          currentVisitors: 0
+          currentVisitors: 0,
         }));
         setRealtimeEvents(formattedEvents);
       })
       .catch(console.error);
 
     return () => {
-      socket.off('connect');
-      socket.off('disconnect');
-      socket.off('dashboard:update');
-      socket.off('stats:hourly');
-      socket.off('visitor:event');
+      socket.off("connect");
+      socket.off("disconnect");
+      socket.off("dashboard:update");
+      socket.off("stats:hourly");
+      socket.off("visitor:event");
     };
   }, []);
 
   const isAlmostFull =
     dashboardData.isOpen &&
-    dashboardData.status !== 'full' &&
+    dashboardData.status !== "full" &&
     dashboardData.occupancyRate > 80;
 
   const handleCapacityUpdate = async (capacity: number) => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/capacity`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ capacity }),
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/capacity`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ capacity }),
+        }
+      );
 
       if (response.ok) {
-        console.log('Capacity updated successfully');
+        console.log("Capacity updated successfully");
       }
     } catch (error) {
-      console.error('Failed to update capacity:', error);
+      console.error("Failed to update capacity:", error);
     }
   };
 
@@ -116,7 +123,7 @@ export default function Dashboard() {
     if (!dashboardData.isOpen) {
       return <CircleX className="h-6 w-6 text-muted-foreground" />;
     }
-    if (dashboardData.status === 'full') {
+    if (dashboardData.status === "full") {
       return <CircleAlert className="h-6 w-6 text-destructive" />;
     }
     if (isAlmostFull) {
@@ -126,22 +133,23 @@ export default function Dashboard() {
   };
 
   const getStatusText = () => {
-    if (!dashboardData.isOpen) return 'Tutup';
-    if (dashboardData.status === 'full') return 'Penuh';
-    if (isAlmostFull) return 'Hampir Penuh';
-    return 'Tersedia';
+    if (!dashboardData.isOpen) return "Tutup";
+    if (dashboardData.status === "full") return "Penuh";
+    if (isAlmostFull) return "Hampir Penuh";
+    return "Tersedia";
   };
 
   const getStatusColor = () => {
-    if (!dashboardData.isOpen) return 'text-muted-foreground';
-    if (dashboardData.status === 'full') return 'text-destructive';
-    if (isAlmostFull) return 'text-yellow-500';
-    return 'text-primary';
+    if (!dashboardData.isOpen) return "text-muted-foreground";
+    if (dashboardData.status === "full") return "text-destructive";
+    if (isAlmostFull) return "text-yellow-500";
+    return "text-primary";
   };
 
-  const peakHour = hourlyStats.reduce((max, stat) =>
-    stat.peakVisitors > max.peakVisitors ? stat : max
-  , { hour: 0, peakVisitors: 0, entryCount: 0, exitCount: 0 });
+  const peakHour = hourlyStats.reduce(
+    (max, stat) => (stat.peakVisitors > max.peakVisitors ? stat : max),
+    { hour: 0, peakVisitors: 0, entryCount: 0, exitCount: 0 }
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -151,25 +159,37 @@ export default function Dashboard() {
           <div className="flex items-center gap-4">
             {/* Logo Placeholder */}
             <div className="w-12 h-12 rounded-lg flex items-center justify-center">
-              <Image src={Logo} alt="Resto Logo" className="w-10 h-10 object-contain" />
+              <Image
+                src={Logo}
+                alt="Resto Logo"
+                className="w-10 h-10 object-contain"
+              />
             </div>
             <div>
               <h1 className="text-2xl font-bold">Mie Gacuan Dashboard</h1>
-              <p className="text-sm text-muted-foreground">Monitoring Pengunjung Real-time</p>
+              <p className="text-sm text-muted-foreground">
+                Monitoring Pengunjung Real-time
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-4">
             {/* Connection Status */}
             <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${
-                connectionStatus === 'connected' ? 'bg-green-500' :
-                connectionStatus === 'connecting' ? 'bg-yellow-500' :
-                'bg-red-500'
-              }`} />
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  connectionStatus === "connected"
+                    ? "bg-green-500"
+                    : connectionStatus === "connecting"
+                    ? "bg-yellow-500"
+                    : "bg-red-500"
+                }`}
+              />
               <span className="text-sm text-muted-foreground capitalize">
-                {connectionStatus === 'connected' ? 'Terhubung' :
-                 connectionStatus === 'connecting' ? 'Menghubungkan...' :
-                 'Terputus'}
+                {connectionStatus === "connected"
+                  ? "Terhubung"
+                  : connectionStatus === "connecting"
+                  ? "Menghubungkan..."
+                  : "Terputus"}
               </span>
             </div>
             <ThemeToggle />
@@ -223,10 +243,12 @@ export default function Dashboard() {
               <Activity className="h-5 w-5 text-primary" />
               <span className="font-medium">Jam Tersibuk Hari Ini:</span>
               <span className="font-bold">
-                {peakHour.hour.toString().padStart(2, '0')}:00
+                {peakHour.hour.toString().padStart(2, "0")}:00
               </span>
               <span className="text-muted-foreground">dengan</span>
-              <span className="font-bold">{peakHour.peakVisitors} pengunjung</span>
+              <span className="font-bold">
+                {peakHour.peakVisitors} pengunjung
+              </span>
             </div>
           </div>
         )}
@@ -253,7 +275,9 @@ export default function Dashboard() {
       {/* Footer */}
       <footer className="border-t bg-card mt-12">
         <div className="container mx-auto px-4 py-6 text-center text-sm text-muted-foreground">
-          <p>Tugas Akhir IOT Kelompok 3</p>
+          <Linked href="/kelompok">
+            <p>Tugas Akhir IOT Kelompok 3</p>
+          </Linked>
         </div>
       </footer>
     </div>
