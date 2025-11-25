@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model VisitorLog {
+  id        String   @id @default(uuid())
+  type      String   // "entry" or "exit"
+  timestamp DateTime @default(now())
+
+  @@index([timestamp])
+  @@index([type])
+  @@map("visitor_logs")
+}
+
+model HourlyStatistic {
+  id            String   @id @default(uuid())
+  date          DateTime @db.Date
+  hour          Int      // 0-23
+  entryCount    Int      @default(0) @map("entry_count")
+  exitCount     Int      @default(0) @map("exit_count")
+  peakVisitors  Int      @default(0) @map("peak_visitors")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([date, hour])
+  @@index([date])
+  @@map("hourly_statistics")
+}
+
+model Configuration {
+  id           String   @id @default(uuid())
+  key          String   @unique
+  value        String
+  description  String?
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("configurations")
+}
+
+model CurrentStatus {
+  id              String   @id @default("singleton")
+  currentVisitors Int      @default(0) @map("current_visitors")
+  maxCapacity     Int      @default(100) @map("max_capacity")
+  isOpen          Boolean  @default(true) @map("is_open")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("current_status")
+}
