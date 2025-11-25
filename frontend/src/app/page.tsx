@@ -8,6 +8,8 @@ import { HourlyChart } from '@/components/HourlyChart';
 import { RealtimeEventFeed } from '@/components/RealtimeEventFeed';
 import { CapacityControl } from '@/components/CapacityControl';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { Button } from '@/components/ui/Button';
+import { formatDateForAPI, isToday } from '@/lib/utils';
 import {
   Users,
   UserCheck,
@@ -32,6 +34,18 @@ export default function Dashboard() {
   const [hourlyStats, setHourlyStats] = useState<HourlyStats[]>([]);
   const [realtimeEvents, setRealtimeEvents] = useState<RealtimeEvent[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting');
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+
+  // Fetch hourly stats for a specific date
+  const fetchHourlyStats = (date: Date) => {
+    const dateStr = formatDateForAPI(date);
+    const url = `${process.env.NEXT_PUBLIC_API_URL}/api/stats/hourly?date=${dateStr}`;
+
+    fetch(url)
+      .then(res => res.json())
+      .then(stats => setHourlyStats(stats))
+      .catch(console.error);
+  };
 
   useEffect(() => {
     const socket = getSocket();
@@ -49,7 +63,10 @@ export default function Dashboard() {
     });
 
     socket.on('stats:hourly', (stats: HourlyStats[]) => {
-      setHourlyStats(stats);
+      // Only update if currently viewing today's stats
+      if (isToday(selectedDate)) {
+        setHourlyStats(stats);
+      }
     });
 
     socket.on('visitor:event', (event: RealtimeEvent) => {
@@ -67,10 +84,8 @@ export default function Dashboard() {
       .then(data => setDashboardData(data))
       .catch(console.error);
 
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/stats/hourly`)
-      .then(res => res.json())
-      .then(stats => setHourlyStats(stats))
-      .catch(console.error);
+    // Fetch hourly stats for selected date
+    fetchHourlyStats(selectedDate);
 
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/recent`)
       .then(res => res.json())
@@ -93,7 +108,7 @@ export default function Dashboard() {
       socket.off('visitor:event');
       socket.off('capacity:updated');
     };
-  }, []);
+  }, [selectedDate]);
 
   const isAlmostFull =
     dashboardData.isOpen &&
@@ -246,7 +261,27 @@ export default function Dashboard() {
         {/* Charts and Controls */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           <div className="lg:col-span-2">
-            <HourlyChart data={hourlyStats} />
+            {/* Date Picker untuk Statistik */}
+            <div className="flex items-center gap-4 mb-4">
+              <label className="text-sm font-medium">Pilih Tanggal:</label>
+              <input
+                type="date"
+                value={formatDateForAPI(selectedDate)}
+                onChange={(e) => setSelectedDate(new Date(e.target.value))}
+                max={formatDateForAPI(new Date())}
+                className="px-3 py-2 rounded-md border border-input bg-background text-foreground"
+              />
+              {!isToday(selectedDate) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedDate(new Date())}
+                >
+                  Kembali ke Hari Ini
+                </Button>
+              )}
+            </div>
+            <HourlyChart data={hourlyStats} selectedDate={selectedDate} />
           </div>
           <div>
             <CapacityControl
@@ -265,7 +300,7 @@ export default function Dashboard() {
       {/* Footer */}
       <footer className="border-t bg-card mt-12">
         <div className="container mx-auto px-4 py-6 text-center text-sm text-muted-foreground">
-          <p>© 2024 Resto Dashboard. Powered by MQTT & Next.js</p>
+          <p>Copyright © 2025 PT Gacuan Gamakan. All Rights Reserved</p>
         </div>
       </footer>
     </div>

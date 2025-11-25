@@ -32,15 +32,7 @@ export class RecoveryService {
     // Calculate net visitors, ensure minimum of 0
     const netVisitors = Math.max(0, entries - exits);
 
-    // If restaurant is open and count is 0, set to 1
-    const status = await this.prisma.currentStatus.findUnique({
-      where: { id: 'singleton' }
-    });
-
-    if (status?.isOpen && netVisitors === 0) {
-      console.log('[Recovery] Restaurant is open but count is 0, setting to minimum 1 visitor');
-      return 1; // Minimum 1 visitor during operating hours
-    }
+    // REMOVED: Minimum visitor validation - allow count to be 0
 
     return netVisitors;
   }

@@ -25,3 +25,23 @@ export function formatDateTimeJakarta(timestamp: string): string {
 
   return format(jakartaDate, 'dd MMM yyyy HH:mm:ss', { timeZone: JAKARTA_TZ });
 }
+
+export function formatDateForAPI(date: Date): string {
+  const jakartaDate = toZonedTime(date, JAKARTA_TZ);
+  return format(jakartaDate, 'yyyy-MM-dd', { timeZone: JAKARTA_TZ });
+}
+
+export function formatDateForDisplay(date: Date): string {
+  const jakartaDate = toZonedTime(date, JAKARTA_TZ);
+  return format(jakartaDate, 'dd MMMM yyyy', { timeZone: JAKARTA_TZ });
+}
+
+export function isToday(date: Date): boolean {
+  const today = new Date();
+  const jakartaToday = toZonedTime(today, JAKARTA_TZ);
+  const jakartaDate = toZonedTime(date, JAKARTA_TZ);
+
+  return jakartaToday.getDate() === jakartaDate.getDate() &&
+         jakartaToday.getMonth() === jakartaDate.getMonth() &&
+         jakartaToday.getFullYear() === jakartaDate.getFullYear();
+}

@@ -2,14 +2,20 @@
 
 import { HourlyStats } from '@/types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { formatHour } from '@/lib/utils';
+import { formatHour, formatDateForDisplay, isToday } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 
 interface HourlyChartProps {
   data: HourlyStats[];
+  selectedDate?: Date;
 }
 
-export function HourlyChart({ data }: HourlyChartProps) {
+export function HourlyChart({ data, selectedDate }: HourlyChartProps) {
+  // Dynamic title based on selected date
+  const title = selectedDate && !isToday(selectedDate)
+    ? `Statistik Per Jam - ${formatDateForDisplay(selectedDate)}`
+    : 'Statistik Per Jam Hari Ini';
+
   const chartData = data.map(stat => ({
     hour: formatHour(stat.hour),
     'Masuk': stat.entryCount,
@@ -19,7 +25,7 @@ export function HourlyChart({ data }: HourlyChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Statistik Per Jam Hari Ini</CardTitle>
+        <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>

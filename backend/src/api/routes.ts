@@ -31,11 +31,38 @@ export function createRouter(dbService: DatabaseService, mqttService: MQTTServic
     }
   });
 
-  // Get today's hourly statistics
+  // Get hourly statistics (with optional date parameter)
   router.get('/api/stats/hourly', async (req: Request, res: Response) => {
     try {
-      const stats = await dbService.getTodayHourlyStats();
-      res.json(stats);
+      const dateParam = req.query.date as string;
+
+      if (dateParam) {
+        // Validate date format (YYYY-MM-DD)
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(dateParam)) {
+          return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        }
+
+        // Parse date in Jakarta timezone
+        const [year, month, day] = dateParam.split('-').map(Number);
+        const requestedDate = new Date(year, month - 1, day);
+
+        // Check if date is not in the future
+        const today = TimezoneUtil.nowInJakarta();
+        const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const requestedDateOnly = new Date(requestedDate.getFullYear(), requestedDate.getMonth(), requestedDate.getDate());
+
+        if (requestedDateOnly > todayDateOnly) {
+          return res.status(400).json({ error: 'Cannot query future dates' });
+        }
+
+        const stats = await dbService.getHourlyStatsByDate(requestedDate);
+        res.json(stats);
+      } else {
+        // Default to today
+        const stats = await dbService.getTodayHourlyStats();
+        res.json(stats);
+      }
     } catch (error) {
       console.error('Error fetching hourly stats:', error);
       res.status(500).json({ error: 'Failed to fetch hourly stats' });

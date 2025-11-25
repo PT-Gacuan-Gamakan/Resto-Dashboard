@@ -59,13 +59,9 @@ export class DatabaseService {
 
     if (!status) throw new Error('Status not initialized');
 
-    let newCount = Math.max(0, status.currentVisitors + delta);
+    const newCount = Math.max(0, status.currentVisitors + delta);
 
-    // If open and count would drop to 0, keep at 1 (minimum visitor validation)
-    if (status.isOpen && newCount === 0 && delta < 0) {
-      newCount = 1;
-      console.log('[Database] Maintaining minimum visitor count of 1');
-    }
+    // REMOVED: Minimum visitor validation - allow count to be 0
 
     await this.prisma.currentStatus.update({
       where: { id: 'singleton' },
@@ -159,9 +155,8 @@ export class DatabaseService {
     }
   }
 
-  async getTodayHourlyStats(): Promise<HourlyStats[]> {
-    const today = TimezoneUtil.nowInJakarta();
-    const dateOnly = TimezoneUtil.getDateOnlyJakarta(today);
+  async getHourlyStatsByDate(date: Date): Promise<HourlyStats[]> {
+    const dateOnly = TimezoneUtil.getDateOnlyJakarta(date);
 
     const stats = await this.prisma.hourlyStatistic.findMany({
       where: { date: dateOnly },
@@ -181,6 +176,11 @@ export class DatabaseService {
     }
 
     return result;
+  }
+
+  async getTodayHourlyStats(): Promise<HourlyStats[]> {
+    const today = TimezoneUtil.nowInJakarta();
+    return this.getHourlyStatsByDate(today);
   }
 
   async getRecentEvents(limit: number = 20) {
