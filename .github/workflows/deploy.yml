@@ -15,7 +15,6 @@ jobs:
         run: |
             mv * /apps/iot
             cd /apps/iot
-            cp /iot/.env .env
             docker compose up -d --build
             docker system prune -af
             cd && sudo rm -rf /apps/iot/*
