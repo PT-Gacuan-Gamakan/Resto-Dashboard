@@ -8,7 +8,6 @@ import { HourlyChart } from '@/components/HourlyChart';
 import { RealtimeEventFeed } from '@/components/RealtimeEventFeed';
 import { CapacityControl } from '@/components/CapacityControl';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { Button } from '@/components/ui/Button';
 import { formatDateForAPI, isToday } from '@/lib/utils';
 import {
   Users,
@@ -261,27 +260,11 @@ export default function Dashboard() {
         {/* Charts and Controls */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           <div className="lg:col-span-2">
-            {/* Date Picker untuk Statistik */}
-            <div className="flex items-center gap-4 mb-4">
-              <label className="text-sm font-medium">Pilih Tanggal:</label>
-              <input
-                type="date"
-                value={formatDateForAPI(selectedDate)}
-                onChange={(e) => setSelectedDate(new Date(e.target.value))}
-                max={formatDateForAPI(new Date())}
-                className="px-3 py-2 rounded-md border border-input bg-background text-foreground"
-              />
-              {!isToday(selectedDate) && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedDate(new Date())}
-                >
-                  Kembali ke Hari Ini
-                </Button>
-              )}
-            </div>
-            <HourlyChart data={hourlyStats} selectedDate={selectedDate} />
+            <HourlyChart
+              data={hourlyStats}
+              selectedDate={selectedDate}
+              onDateChange={setSelectedDate}
+            />
           </div>
           <div>
             <CapacityControl
