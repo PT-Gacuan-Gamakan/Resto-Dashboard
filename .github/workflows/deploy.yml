@@ -11,10 +11,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Update Deployment
+      - name: Update Application Files
         run: |
             sudo rm -rf /apps/iot/*
             mv * /apps/iot
+
+      - name: Inject SSL certificates from secrets
+        run: |
+            echo "${{ secrets.CERT_PEM }}" | sudo tee /apps/iot/nginx/ssl/cert.pem > /dev/null
+            echo "${{ secrets.KEY_PEM }}" | sudo tee /apps/iot/nginx/ssl/key.pem > /dev/null
+            echo "${{ secrets.DHPARAMS_PEM }}" | sudo tee /apps/iot/nginx/ssl/dhparams.pem > /dev/null
+            sudo chmod 600 /apps/iot/nginx/ssl/key.pem
+            sudo chmod 644 /apps/iot/nginx/ssl/cert.pem
+            sudo chmod 644 /apps/iot/nginx/ssl/dhparams.pem
+
+      - name: Inject env file from secrets
+        run: |
+            echo "${{ secrets.ENV_FILE }}" | sudo tee /apps/iot/.env > /dev/null
+            sudo chmod 644 /apps/iot/.env
+
+      - name: Deploy with Docker
+        run: |
             cd /apps/iot
             docker compose up -d --build
             docker system prune -af
