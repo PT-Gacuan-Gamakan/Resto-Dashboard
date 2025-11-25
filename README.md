@@ -103,8 +103,15 @@ Dashboard ini terhubung dengan ESP32 yang menggunakan:
    ```
 
 3. **Build dan jalankan dengan Docker Compose**
+
+   **Production Mode** (recommended):
    ```bash
-   docker-compose up -d --build
+   docker compose up -d --build
+   ```
+
+   **Development Mode** (with hot reload):
+   ```bash
+   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
    ```
 
 4. **Akses aplikasi**
@@ -112,7 +119,7 @@ Dashboard ini terhubung dengan ESP32 yang menggunakan:
    - Backend API: http://localhost:4000/api/dashboard
    - Database: localhost:5432
 
-### Development Mode
+### Development Mode (Without Docker)
 
 Jika ingin development tanpa Docker:
 
@@ -131,6 +138,18 @@ cd frontend
 npm install
 npm run dev
 ```
+
+### Production vs Development
+
+- **Production** (`docker compose up`):
+  - Uses built/compiled code from Docker images
+  - No volume mounts (faster, isolated)
+  - Recommended for deployment
+
+- **Development** (`docker compose -f docker-compose.yml -f docker-compose.dev.yml up`):
+  - Mounts local code into containers
+  - Hot reload on code changes
+  - Slower startup, good for active development
 
 ## 📊 Database Schema
 
