@@ -103,20 +103,12 @@ Dashboard ini terhubung dengan ESP32 yang menggunakan:
    ```
 
 3. **Build dan jalankan dengan Docker Compose**
-
-   **Production Mode** (recommended):
    ```bash
    docker compose up -d --build
    ```
 
-   **Development Mode** (with hot reload):
-   ```bash
-   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
-   ```
-
 4. **Akses aplikasi**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:4000/api/dashboard
+   - Dashboard: http://localhost (via Nginx reverse proxy)
    - Database: localhost:5432
 
 ### Development Mode (Without Docker)
