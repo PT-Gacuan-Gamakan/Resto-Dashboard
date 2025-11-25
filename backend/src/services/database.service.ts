@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { DashboardData, HourlyStats } from '../types';
+import { TimezoneUtil } from '../utils/timezone.util';
 
 export class DatabaseService {
   private prisma: PrismaClient;
@@ -38,6 +39,11 @@ export class DatabaseService {
       });
       console.log('[Database] Initialized current status');
     }
+
+    // ALWAYS recover count on startup (critical fix for visitor count bug)
+    const { RecoveryService } = await import('./recovery.service');
+    const recovery = new RecoveryService(this.prisma);
+    await recovery.syncCurrentStatus();
   }
 
   async logVisitor(type: 'entry' | 'exit'): Promise<void> {
@@ -54,6 +60,8 @@ export class DatabaseService {
     if (!status) throw new Error('Status not initialized');
 
     const newCount = Math.max(0, status.currentVisitors + delta);
+
+    // REMOVED: Minimum visitor validation - allow count to be 0
 
     await this.prisma.currentStatus.update({
       where: { id: 'singleton' },
@@ -105,7 +113,7 @@ export class DatabaseService {
   }
 
   async updateHourlyStats(date: Date, hour: number, type: 'entry' | 'exit', currentVisitors: number): Promise<void> {
-    const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const dateOnly = TimezoneUtil.getDateOnlyJakarta(date);
 
     const existing = await this.prisma.hourlyStatistic.findUnique({
       where: {
@@ -147,9 +155,8 @@ export class DatabaseService {
     }
   }
 
-  async getTodayHourlyStats(): Promise<HourlyStats[]> {
-    const today = new Date();
-    const dateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  async getHourlyStatsByDate(date: Date): Promise<HourlyStats[]> {
+    const dateOnly = TimezoneUtil.getDateOnlyJakarta(date);
 
     const stats = await this.prisma.hourlyStatistic.findMany({
       where: { date: dateOnly },
@@ -169,6 +176,11 @@ export class DatabaseService {
     }
 
     return result;
+  }
+
+  async getTodayHourlyStats(): Promise<HourlyStats[]> {
+    const today = TimezoneUtil.nowInJakarta();
+    return this.getHourlyStatsByDate(today);
   }
 
   async getRecentEvents(limit: number = 20) {

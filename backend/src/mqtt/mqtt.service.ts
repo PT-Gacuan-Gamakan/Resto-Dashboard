@@ -1,6 +1,7 @@
 import mqtt, { MqttClient } from 'mqtt';
 import { DatabaseService } from '../services/database.service';
 import { RealtimeEvent } from '../types';
+import { TimezoneUtil } from '../utils/timezone.util';
 
 export class MQTTService {
   private client: MqttClient | null = null;
@@ -11,6 +12,8 @@ export class MQTTService {
   private port: number;
   private topicSensor: string;
   private topicCapacity: string;
+  private lastMessageTime: number = Date.now();
+  private healthCheckInterval: NodeJS.Timeout | null = null;
 
   constructor(dbService: DatabaseService) {
     this.dbService = dbService;
@@ -36,6 +39,7 @@ export class MQTTService {
         this.client.on('connect', () => {
           console.log('[MQTT] Connected to broker');
           this.subscribe();
+          this.startHealthMonitoring();
           resolve();
         });
 
@@ -72,6 +76,7 @@ export class MQTTService {
   }
 
   private async handleMessage(topic: string, payload: Buffer) {
+    this.lastMessageTime = Date.now(); // Track message time for health monitoring
     const message = payload.toString().toLowerCase();
     console.log(`[MQTT] Received: ${topic} -> ${message}`);
 
@@ -97,15 +102,16 @@ export class MQTTService {
         // Update current count
         const currentVisitors = await this.dbService.updateCurrentVisitors(delta);
 
-        // Update hourly stats
-        const now = new Date();
-        await this.dbService.updateHourlyStats(now, now.getHours(), type, currentVisitors);
+        // Update hourly stats with Jakarta timezone
+        const now = TimezoneUtil.nowInJakarta();
+        const jakartaHour = TimezoneUtil.getJakartaHour(now);
+        await this.dbService.updateHourlyStats(now, jakartaHour, type, currentVisitors);
 
-        // Emit event for real-time updates
+        // Emit event for real-time updates with Jakarta timestamp
         const event: RealtimeEvent = {
           id: Date.now().toString(),
           type,
-          timestamp: now.toISOString(),
+          timestamp: TimezoneUtil.toISOStringJakarta(now),
           currentVisitors
         };
 
@@ -118,6 +124,17 @@ export class MQTTService {
         console.error('[MQTT] Error processing message:', error);
       }
     }
+  }
+
+  private startHealthMonitoring() {
+    this.healthCheckInterval = setInterval(() => {
+      const timeSinceLastMessage = Date.now() - this.lastMessageTime;
+      const FIVE_MINUTES = 5 * 60 * 1000;
+
+      if (timeSinceLastMessage > FIVE_MINUTES) {
+        console.warn('[MQTT] No messages received in 5 minutes - connection may be stale');
+      }
+    }, 60000); // Check every minute
   }
 
   publishCapacity(capacity: number): void {
@@ -140,6 +157,9 @@ export class MQTTService {
   }
 
   disconnect() {
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+    }
     if (this.client) {
       this.client.end();
       console.log('[MQTT] Disconnected');

@@ -40,10 +40,6 @@ export function RealtimeEventFeed({ events }: RealtimeEventFeedProps) {
                     {formatTime(event.timestamp)}
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-semibold">{event.currentVisitors}</p>
-                  <p className="text-xs text-muted-foreground">pengunjung</p>
-                </div>
               </div>
             ))
           )}

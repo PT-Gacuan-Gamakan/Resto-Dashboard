@@ -1,14 +1,16 @@
-"use client";
-import Image from "next/image";
+'use client';
+import Image from 'next/image';
 import Linked from "next/link";
-import { useEffect, useState } from "react";
-import { getSocket } from "@/lib/socket";
-import { DashboardData, HourlyStats, RealtimeEvent } from "@/types";
-import { StatCard } from "@/components/StatCard";
-import { HourlyChart } from "@/components/HourlyChart";
-import { RealtimeEventFeed } from "@/components/RealtimeEventFeed";
-import { CapacityControl } from "@/components/CapacityControl";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { useEffect, useState } from 'react';
+import { getSocket } from '@/lib/socket';
+import { DashboardData, HourlyStats, RealtimeEvent } from '@/types';
+import { StatCard } from '@/components/StatCard';
+import { HourlyChart } from '@/components/HourlyChart';
+import { RealtimeEventFeed } from '@/components/RealtimeEventFeed';
+import { CapacityControl } from '@/components/CapacityControl';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { formatDateForAPI, isToday } from '@/lib/utils';
+
 import {
   Users,
   UserCheck,
@@ -24,8 +26,8 @@ import Logo from "../images/Desain tanpa judul (3)(1).png";
 export default function Dashboard() {
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     currentVisitors: 0,
-    maxCapacity: 100,
-    availableSeats: 100,
+    maxCapacity: 0,
+    availableSeats: 0,
     occupancyRate: 0,
     status: "closed",
     isOpen: false,
@@ -33,9 +35,19 @@ export default function Dashboard() {
 
   const [hourlyStats, setHourlyStats] = useState<HourlyStats[]>([]);
   const [realtimeEvents, setRealtimeEvents] = useState<RealtimeEvent[]>([]);
-  const [connectionStatus, setConnectionStatus] = useState<
-    "connected" | "connecting" | "disconnected"
-  >("connecting");
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting');
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+
+  // Fetch hourly stats for a specific date
+  const fetchHourlyStats = (date: Date) => {
+    const dateStr = formatDateForAPI(date);
+    const url = `${process.env.NEXT_PUBLIC_API_URL}/api/stats/hourly?date=${dateStr}`;
+
+    fetch(url)
+      .then(res => res.json())
+      .then(stats => setHourlyStats(stats))
+      .catch(console.error);
+  };
 
   useEffect(() => {
     const socket = getSocket();
@@ -52,12 +64,20 @@ export default function Dashboard() {
       setDashboardData(data);
     });
 
-    socket.on("stats:hourly", (stats: HourlyStats[]) => {
-      setHourlyStats(stats);
+    socket.on('stats:hourly', (stats: HourlyStats[]) => {
+      // Only update if currently viewing today's stats
+      if (isToday(selectedDate)) {
+        setHourlyStats(stats);
+      }
     });
 
     socket.on("visitor:event", (event: RealtimeEvent) => {
       setRealtimeEvents((prev) => [event, ...prev].slice(0, 20));
+    });
+
+    // FIX FOR BUG 3: Listen for capacity updates
+    socket.on('capacity:updated', (data: { capacity: number }) => {
+      console.log('Capacity updated via Socket.IO:', data.capacity);
     });
 
     // Fetch initial data
@@ -66,10 +86,8 @@ export default function Dashboard() {
       .then((data) => setDashboardData(data))
       .catch(console.error);
 
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/stats/hourly`)
-      .then((res) => res.json())
-      .then((stats) => setHourlyStats(stats))
-      .catch(console.error);
+    // Fetch hourly stats for selected date
+    fetchHourlyStats(selectedDate);
 
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/recent`)
       .then((res) => res.json())
@@ -85,37 +103,41 @@ export default function Dashboard() {
       .catch(console.error);
 
     return () => {
-      socket.off("connect");
-      socket.off("disconnect");
-      socket.off("dashboard:update");
-      socket.off("stats:hourly");
-      socket.off("visitor:event");
+      socket.off('connect');
+      socket.off('disconnect');
+      socket.off('dashboard:update');
+      socket.off('stats:hourly');
+      socket.off('visitor:event');
+      socket.off('capacity:updated');
     };
-  }, []);
+  }, [selectedDate]);
 
   const isAlmostFull =
     dashboardData.isOpen &&
     dashboardData.status !== "full" &&
     dashboardData.occupancyRate > 80;
 
-  const handleCapacityUpdate = async (capacity: number) => {
+  const handleCapacityUpdate = async (capacity: number, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/capacity`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ capacity }),
-        }
-      );
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/capacity`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ capacity, password }),
+      });
 
-      if (response.ok) {
-        console.log("Capacity updated successfully");
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { success: false, error: data.error || 'Gagal mengupdate kapasitas' };
       }
+
+      console.log('Capacity updated successfully');
+      return { success: true };
     } catch (error) {
-      console.error("Failed to update capacity:", error);
+      console.error('Failed to update capacity:', error);
+      return { success: false, error: 'Terjadi kesalahan saat menghubungi server' };
     }
   };
 
@@ -256,7 +278,11 @@ export default function Dashboard() {
         {/* Charts and Controls */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           <div className="lg:col-span-2">
-            <HourlyChart data={hourlyStats} />
+            <HourlyChart
+              data={hourlyStats}
+              selectedDate={selectedDate}
+              onDateChange={setSelectedDate}
+            />
           </div>
           <div>
             <CapacityControl

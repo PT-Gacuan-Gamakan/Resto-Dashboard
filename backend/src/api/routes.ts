@@ -1,9 +1,24 @@
 import { Router, Request, Response } from 'express';
 import { DatabaseService } from '../services/database.service';
 import { MQTTService } from '../mqtt/mqtt.service';
+import { TimezoneUtil } from '../utils/timezone.util';
+import crypto from 'crypto';
 
-export function createRouter(dbService: DatabaseService, mqttService: MQTTService): Router {
+export function createRouter(dbService: DatabaseService, mqttService: MQTTService, io: any): Router {
   const router = Router();
+
+  // Helper function for password verification
+  function verifyAdminPassword(inputPassword: string): boolean {
+    const storedHash = process.env.ADMIN_PASSWORD_HASH;
+
+    if (!storedHash) {
+      console.error('[Security] ADMIN_PASSWORD_HASH not configured');
+      return false; // DENY jika tidak ada password hash
+    }
+
+    const inputHash = crypto.createHash('sha256').update(inputPassword).digest('hex');
+    return inputHash === storedHash;
+  }
 
   // Get current dashboard data
   router.get('/api/dashboard', async (req: Request, res: Response) => {
@@ -16,11 +31,38 @@ export function createRouter(dbService: DatabaseService, mqttService: MQTTServic
     }
   });
 
-  // Get today's hourly statistics
+  // Get hourly statistics (with optional date parameter)
   router.get('/api/stats/hourly', async (req: Request, res: Response) => {
     try {
-      const stats = await dbService.getTodayHourlyStats();
-      res.json(stats);
+      const dateParam = req.query.date as string;
+
+      if (dateParam) {
+        // Validate date format (YYYY-MM-DD)
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(dateParam)) {
+          return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        }
+
+        // Parse date in Jakarta timezone
+        const [year, month, day] = dateParam.split('-').map(Number);
+        const requestedDate = new Date(year, month - 1, day);
+
+        // Check if date is not in the future
+        const today = TimezoneUtil.nowInJakarta();
+        const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const requestedDateOnly = new Date(requestedDate.getFullYear(), requestedDate.getMonth(), requestedDate.getDate());
+
+        if (requestedDateOnly > todayDateOnly) {
+          return res.status(400).json({ error: 'Cannot query future dates' });
+        }
+
+        const stats = await dbService.getHourlyStatsByDate(requestedDate);
+        res.json(stats);
+      } else {
+        // Default to today
+        const stats = await dbService.getTodayHourlyStats();
+        res.json(stats);
+      }
     } catch (error) {
       console.error('Error fetching hourly stats:', error);
       res.status(500).json({ error: 'Failed to fetch hourly stats' });
@@ -39,10 +81,15 @@ export function createRouter(dbService: DatabaseService, mqttService: MQTTServic
     }
   });
 
-  // Update max capacity
+  // Update max capacity (NOW WITH PASSWORD PROTECTION)
   router.post('/api/capacity', async (req: Request, res: Response) => {
     try {
-      const { capacity } = req.body;
+      const { capacity, password } = req.body;
+
+      // Validate password
+      if (!password || !verifyAdminPassword(password)) {
+        return res.status(401).json({ error: 'Unauthorized: Invalid password' });
+      }
 
       if (!capacity || capacity < 1) {
         return res.status(400).json({ error: 'Invalid capacity value' });
@@ -52,6 +99,13 @@ export function createRouter(dbService: DatabaseService, mqttService: MQTTServic
 
       // Publish to MQTT so ESP32 receives the update
       mqttService.publishCapacity(capacity);
+
+      // Broadcast to all connected Socket.IO clients (FIX FOR BUG 3)
+      const dashboardData = await dbService.getCurrentStatus();
+      io.emit('dashboard:update', dashboardData);
+      io.emit('capacity:updated', { capacity });
+
+      console.log(`[API] Capacity updated to ${capacity} and broadcasted to clients`);
 
       res.json({ success: true, capacity });
     } catch (error) {
@@ -81,7 +135,11 @@ export function createRouter(dbService: DatabaseService, mqttService: MQTTServic
 
   // Health check
   router.get('/health', (req: Request, res: Response) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    res.json({
+      status: 'ok',
+      timestamp: TimezoneUtil.toISOStringJakarta(TimezoneUtil.nowInJakarta()),
+      timezone: 'Asia/Jakarta'
+    });
   });
 
   return router;
