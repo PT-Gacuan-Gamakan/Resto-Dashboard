@@ -44,4 +44,5 @@ Thumbs.db
 *.pid.lock
 
 # Prisma
-backend/prisma/migrations/
+# Note: migrations should be committed to version control
+# backend/prisma/migrations/
