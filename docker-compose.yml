@@ -55,6 +55,12 @@ services:
       - resto-network
     depends_on:
       - backend
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   nginx:
     build:
@@ -67,8 +73,10 @@ services:
     networks:
       - resto-network
     depends_on:
-      - frontend
-      - backend
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_started
 
 networks:
   resto-network:
