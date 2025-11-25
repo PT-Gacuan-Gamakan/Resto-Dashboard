@@ -97,10 +97,14 @@ export function createRouter(dbService: DatabaseService, mqttService: MQTTServic
 
       await dbService.updateMaxCapacity(capacity);
 
-      // Publish to MQTT so ESP32 receives the update
-      mqttService.publishCapacity(capacity);
+      // Publish max capacity to MQTT (ESP32 receives the update)
+      mqttService.publishMaxCapacity(capacity);
 
-      // Broadcast to all connected Socket.IO clients (FIX FOR BUG 3)
+      // Also publish current capacity so ESP32 has both values
+      const currentStatus = await dbService.getCurrentStatus();
+      mqttService.publishCurrentCapacity(currentStatus.currentVisitors);
+
+      // Broadcast to all connected Socket.IO clients
       const dashboardData = await dbService.getCurrentStatus();
       io.emit('dashboard:update', dashboardData);
       io.emit('capacity:updated', { capacity });

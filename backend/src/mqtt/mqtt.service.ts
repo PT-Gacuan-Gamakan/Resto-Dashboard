@@ -12,6 +12,7 @@ export class MQTTService {
   private port: number;
   private topicSensor: string;
   private topicCapacity: string;
+  private topicMaxCapacity: string;
   private lastMessageTime: number = Date.now();
   private healthCheckInterval: NodeJS.Timeout | null = null;
 
@@ -21,6 +22,7 @@ export class MQTTService {
     this.port = parseInt(process.env.MQTT_PORT || '1883');
     this.topicSensor = process.env.MQTT_TOPIC_SENSOR || 'gacoan-resto/sensor';
     this.topicCapacity = process.env.MQTT_TOPIC_CAPACITY || 'gacoan-resto/dashboard/capacity';
+    this.topicMaxCapacity = process.env.MQTT_TOPIC_MAX_CAPACITY || 'gacoan-resto/dashboard/maxcapacity';
   }
 
   connect(): Promise<void> {
@@ -102,6 +104,9 @@ export class MQTTService {
         // Update current count
         const currentVisitors = await this.dbService.updateCurrentVisitors(delta);
 
+        // Publish current capacity to ESP32
+        this.publishCurrentCapacity(currentVisitors);
+
         // Update hourly stats with Jakarta timezone
         const now = TimezoneUtil.nowInJakarta();
         const jakartaHour = TimezoneUtil.getJakartaHour(now);
@@ -137,17 +142,32 @@ export class MQTTService {
     }, 60000); // Check every minute
   }
 
-  publishCapacity(capacity: number): void {
+  publishCurrentCapacity(currentVisitors: number): void {
     if (!this.client || !this.client.connected) {
       console.error('[MQTT] Client not connected');
       return;
     }
 
-    this.client.publish(this.topicCapacity, capacity.toString(), (err) => {
+    this.client.publish(this.topicCapacity, currentVisitors.toString(), (err) => {
       if (err) {
-        console.error('[MQTT] Publish error:', err);
+        console.error('[MQTT] Publish current capacity error:', err);
       } else {
-        console.log(`[MQTT] Published capacity: ${capacity} to ${this.topicCapacity}`);
+        console.log(`[MQTT] Published current capacity: ${currentVisitors} to ${this.topicCapacity}`);
+      }
+    });
+  }
+
+  publishMaxCapacity(maxCapacity: number): void {
+    if (!this.client || !this.client.connected) {
+      console.error('[MQTT] Client not connected');
+      return;
+    }
+
+    this.client.publish(this.topicMaxCapacity, maxCapacity.toString(), (err) => {
+      if (err) {
+        console.error('[MQTT] Publish max capacity error:', err);
+      } else {
+        console.log(`[MQTT] Published max capacity: ${maxCapacity} to ${this.topicMaxCapacity}`);
       }
     });
   }
