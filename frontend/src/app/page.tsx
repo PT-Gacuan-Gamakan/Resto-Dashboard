@@ -1,5 +1,5 @@
 'use client';
-
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { getSocket } from '@/lib/socket';
 import { DashboardData, HourlyStats, RealtimeEvent } from '@/types';
@@ -17,6 +17,7 @@ import {
   CircleCheck,
   CircleX
 } from 'lucide-react';
+import Logo from '../images/Desain tanpa judul (3)(1).png'
 
 export default function Dashboard() {
   const [dashboardData, setDashboardData] = useState<DashboardData>({
@@ -88,6 +89,11 @@ export default function Dashboard() {
     };
   }, []);
 
+  const isAlmostFull =
+    dashboardData.isOpen &&
+    dashboardData.status !== 'full' &&
+    dashboardData.occupancyRate > 80;
+
   const handleCapacityUpdate = async (capacity: number) => {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/capacity`, {
@@ -113,18 +119,23 @@ export default function Dashboard() {
     if (dashboardData.status === 'full') {
       return <CircleAlert className="h-6 w-6 text-destructive" />;
     }
+    if (isAlmostFull) {
+      return <CircleAlert className="h-6 w-6 text-yellow-500" />;
+    }
     return <CircleCheck className="h-6 w-6 text-primary" />;
   };
 
   const getStatusText = () => {
     if (!dashboardData.isOpen) return 'Tutup';
     if (dashboardData.status === 'full') return 'Penuh';
-    return 'Buka';
+    if (isAlmostFull) return 'Hampir Penuh';
+    return 'Tersedia';
   };
 
   const getStatusColor = () => {
     if (!dashboardData.isOpen) return 'text-muted-foreground';
     if (dashboardData.status === 'full') return 'text-destructive';
+    if (isAlmostFull) return 'text-yellow-500';
     return 'text-primary';
   };
 
@@ -139,11 +150,11 @@ export default function Dashboard() {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             {/* Logo Placeholder */}
-            <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-2xl font-bold text-primary-foreground">R</span>
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center">
+              <Image src={Logo} alt="Resto Logo" className="w-10 h-10 object-contain" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">Resto Dashboard</h1>
+              <h1 className="text-2xl font-bold">Mie Gacuan Dashboard</h1>
               <p className="text-sm text-muted-foreground">Monitoring Pengunjung Real-time</p>
             </div>
           </div>

@@ -24,15 +24,15 @@ export function CapacityControl({ currentCapacity, onUpdate }: CapacityControlPr
   };
 
   return (
-    <Card>
+    <Card className='h-full flex flex-col justify-center'>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex items-center gap-6">
           <Settings className="h-5 w-5" />
           Kontrol Kapasitas
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
+        <div className="space-y-8">
           <div>
             <label className="text-sm font-medium mb-2 block">
               Kapasitas Maksimal
