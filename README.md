@@ -343,29 +343,68 @@ MQTT_PORT=1883
 
 ### Container tidak bisa start
 ```bash
-docker-compose down -v
-docker-compose up -d --build
+docker compose down -v
+docker compose up -d --build
 ```
 
 ### Database migration error
 ```bash
-docker-compose exec backend npx prisma migrate deploy
+docker compose exec backend npx prisma migrate deploy
 ```
+
+### Prisma OpenSSL error
+```
+Error: Prisma failed to detect the libssl/openssl version to use
+```
+**Solution:** Backend Dockerfile sudah include `openssl` installation. Pastikan rebuild image:
+```bash
+docker compose up -d --build backend
+```
+
+### Nginx error: "host not found in upstream"
+```
+nginx: [emerg] host not found in upstream "frontend:3000"
+```
+**Solution:**
+- Nginx config sudah menggunakan DNS resolver dan health checks
+- Pastikan frontend container healthy sebelum nginx start
+- Check dengan: `docker compose ps`
+
+### API calls mengarah ke `/undefined/api/...`
+**Cause:** Environment variable `NEXT_PUBLIC_API_URL` tidak tersedia saat build time
+
+**Solution:**
+1. Set `NEXT_PUBLIC_API_URL=` (empty) atau gunakan domain publik di `.env`
+2. Rebuild frontend: `docker compose up -d --build frontend`
+3. Frontend Dockerfile sudah dikonfigurasi untuk accept build args
+
+### Deployment error: "File exists"
+```
+mv: cannot move 'backend' to '/apps/iot/backend': File exists
+```
+**Solution:** Deployment workflow sudah diperbaiki untuk cleanup files sebelum move. Pastikan menggunakan workflow terbaru dari `.github/workflows/deploy.yml`
 
 ### MQTT tidak terhubung
 - Pastikan broker MQTT aktif dan accessible
 - Cek firewall settings
 - Verifikasi MQTT_BROKER di `.env`
+- Test koneksi: `telnet broker.hivemq.com 1883`
 
 ### Frontend tidak bisa connect ke backend
-- Pastikan `NEXT_PUBLIC_API_URL` dan `NEXT_PUBLIC_WS_URL` benar
-- Cek CORS settings di backend
+- **Jangan gunakan Docker internal IPs** (172.17.0.1) di `NEXT_PUBLIC_API_URL`
+- Untuk production dengan Nginx: set `NEXT_PUBLIC_API_URL=` (empty)
+- Untuk development local: `NEXT_PUBLIC_API_URL=http://localhost:4000`
+- Cek CORS settings di backend jika masih error
 
 ## 📝 Project Structure
 
 ```
 Resto-Dashboard/
-├── backend/                 # Backend service (Node.js + Express)
+├── .github/
+│   └── workflows/
+│       └── deploy.yml      # GitHub Actions CI/CD workflow
+│
+├── backend/                # Backend service (Node.js + Express)
 │   ├── prisma/             # Database schema & migrations
 │   ├── src/
 │   │   ├── api/            # REST API routes
@@ -373,7 +412,7 @@ Resto-Dashboard/
 │   │   ├── services/       # Business logic
 │   │   ├── types/          # TypeScript types
 │   │   └── index.ts        # Entry point
-│   ├── Dockerfile
+│   ├── Dockerfile          # Backend container config (includes OpenSSL)
 │   └── package.json
 │
 ├── frontend/               # Frontend (Next.js 14)
@@ -383,23 +422,39 @@ Resto-Dashboard/
 │   │   ├── lib/           # Utilities & socket
 │   │   └── types/         # TypeScript types
 │   ├── public/            # Static assets
-│   ├── Dockerfile
+│   ├── Dockerfile         # Frontend container config (multi-stage build)
 │   └── package.json
 │
-├── docker-compose.yml      # Docker orchestration
+├── nginx/                  # Nginx reverse proxy
+│   ├── nginx.conf         # Nginx configuration (with resolver & health checks)
+│   └── Dockerfile         # Nginx container config
+│
+├── docker-compose.yml      # Docker orchestration (with health checks)
 ├── .env.example           # Environment variables template
 └── README.md              # Documentation
 ```
+
+## ✨ Recent Improvements
+
+**v2.0 Updates:**
+- ✅ Fixed Prisma OpenSSL compatibility in Alpine Linux containers
+- ✅ Added DNS resolver to Nginx for runtime hostname resolution
+- ✅ Implemented health checks for all services (PostgreSQL, Frontend)
+- ✅ Fixed Next.js build-time environment variables with Docker build args
+- ✅ Improved GitHub Actions deployment workflow with proper file cleanup
+- ✅ Added wget to frontend container for health checks
+- ✅ Enhanced nginx configuration with upstream health monitoring
 
 ## 🔐 Security Notes
 
 ⚠️ **Untuk Production:**
 1. Ganti semua password default di `.env`
-2. Gunakan HTTPS untuk frontend & backend
-3. Setup firewall rules
+2. Gunakan HTTPS untuk frontend & backend (setup SSL/TLS certificate)
+3. Setup firewall rules (allow only port 80/443)
 4. Enable authentication untuk MQTT broker
-5. Setup rate limiting di API
-6. Regular backup database
+5. Setup rate limiting di API (gunakan nginx rate limiting)
+6. Regular backup database (setup cron job)
+7. Update Docker images regularly untuk security patches
 
 ## 📄 License
 
