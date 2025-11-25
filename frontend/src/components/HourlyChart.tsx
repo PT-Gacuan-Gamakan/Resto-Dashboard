@@ -37,7 +37,7 @@ export function HourlyChart({ data, selectedDate, onDateChange }: HourlyChartPro
               value={formatDateForAPI(currentDate)}
               onChange={(e) => onDateChange?.(new Date(e.target.value))}
               max={formatDateForAPI(new Date())}
-              className="px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground"
+              className="px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground [color-scheme:light] dark:[color-scheme:dark]"
             />
             {!isToday(currentDate) && (
               <Button
