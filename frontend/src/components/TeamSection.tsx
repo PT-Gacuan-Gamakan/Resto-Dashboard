@@ -34,7 +34,7 @@ export function TeamSection({ title, subtitle, members }: TeamSectionProps) {
   return (
     <section className="space-y-10">
       <div className="space-y-3 text-center">
-        <h1 className="text-3xl font-bold text-primary md:text-4xl">{title}</h1>
+        <h1 className="text-3xl font-bold text-blue-900 md:text-4xl">{title}</h1>
         {subtitle && (
           <p className="mx-auto max-w-2xl text-muted-foreground">{subtitle}</p>
         )}
