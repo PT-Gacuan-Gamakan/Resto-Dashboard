@@ -36,8 +36,8 @@ async function startServer() {
   app.use(cors());
   app.use(express.json());
 
-  // API Routes
-  app.use(createRouter(dbService, mqttService));
+  // API Routes (pass io for Socket.IO broadcast)
+  app.use(createRouter(dbService, mqttService, io));
 
   // Socket.IO connection handling
   io.on('connection', (socket) => {

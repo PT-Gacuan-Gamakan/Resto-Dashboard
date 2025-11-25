@@ -12,12 +12,18 @@
     "prisma:studio": "prisma studio",
     "docker:start": "prisma migrate deploy && npm run start"
   },
-  "keywords": ["mqtt", "dashboard", "restaurant"],
+  "keywords": [
+    "mqtt",
+    "dashboard",
+    "restaurant"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "cors": "^2.8.5",
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
     "mqtt": "^5.10.1",

@@ -8,6 +8,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+      TZ: Asia/Jakarta
+      PGTZ: Asia/Jakarta
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -37,6 +39,8 @@ services:
       BACKEND_PORT: ${BACKEND_PORT}
       NODE_ENV: ${NODE_ENV}
       DEFAULT_MAX_CAPACITY: ${DEFAULT_MAX_CAPACITY}
+      TZ: Asia/Jakarta
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH}
     networks:
       - resto-network
     depends_on:
@@ -59,6 +63,7 @@ services:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
       NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL}
       RESTAURANT_NAME: ${RESTAURANT_NAME}
+      TZ: Asia/Jakarta
     networks:
       - resto-network
     depends_on:

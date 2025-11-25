@@ -22,8 +22,8 @@ import Logo from '../images/Desain tanpa judul (3)(1).png'
 export default function Dashboard() {
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     currentVisitors: 0,
-    maxCapacity: 100,
-    availableSeats: 100,
+    maxCapacity: 0,
+    availableSeats: 0,
     occupancyRate: 0,
     status: 'closed',
     isOpen: false,
@@ -56,6 +56,11 @@ export default function Dashboard() {
       setRealtimeEvents((prev) => [event, ...prev].slice(0, 20));
     });
 
+    // FIX FOR BUG 3: Listen for capacity updates
+    socket.on('capacity:updated', (data: { capacity: number }) => {
+      console.log('Capacity updated via Socket.IO:', data.capacity);
+    });
+
     // Fetch initial data
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard`)
       .then(res => res.json())
@@ -86,6 +91,7 @@ export default function Dashboard() {
       socket.off('dashboard:update');
       socket.off('stats:hourly');
       socket.off('visitor:event');
+      socket.off('capacity:updated');
     };
   }, []);
 
@@ -94,21 +100,27 @@ export default function Dashboard() {
     dashboardData.status !== 'full' &&
     dashboardData.occupancyRate > 80;
 
-  const handleCapacityUpdate = async (capacity: number) => {
+  const handleCapacityUpdate = async (capacity: number, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/capacity`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ capacity }),
+        body: JSON.stringify({ capacity, password }),
       });
 
-      if (response.ok) {
-        console.log('Capacity updated successfully');
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { success: false, error: data.error || 'Gagal mengupdate kapasitas' };
       }
+
+      console.log('Capacity updated successfully');
+      return { success: true };
     } catch (error) {
       console.error('Failed to update capacity:', error);
+      return { success: false, error: 'Terjadi kesalahan saat menghubungi server' };
     }
   };
 
