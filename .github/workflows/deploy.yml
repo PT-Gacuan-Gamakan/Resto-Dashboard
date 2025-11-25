@@ -13,8 +13,8 @@ jobs:
 
       - name: Update Deployment
         run: |
-            rm -rf /iot
-            mv * /iot
-            cd /iot
+            rm -rf /apps/iot
+            mv * /apps/iot
+            cd /apps/iot
             docker-compose up -d --build
             docker system prune -af
