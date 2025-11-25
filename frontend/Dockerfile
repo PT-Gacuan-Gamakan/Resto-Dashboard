@@ -10,6 +10,17 @@ RUN npm install
 # Build the application
 FROM base AS builder
 WORKDIR /app
+
+# Accept build arguments for Next.js env vars
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_WS_URL
+ARG RESTAURANT_NAME
+
+# Set as environment variables for build
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
+ENV RESTAURANT_NAME=$RESTAURANT_NAME
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
