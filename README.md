@@ -41,6 +41,8 @@ Dashboard monitoring pengunjung restoran secara real-time menggunakan MQTT, ESP3
 
 ### Infrastructure
 - **Docker** & **Docker Compose**
+- **Nginx** - Reverse proxy & load balancer
+- **GitHub Actions** - CI/CD deployment
 - **HiveMQ** - MQTT Broker (broker.hivemq.com)
 
 ## 🔌 IoT Integration
@@ -93,14 +95,25 @@ Dashboard ini terhubung dengan ESP32 yang menggunakan:
    BACKEND_PORT=4000
    NODE_ENV=production
 
-   # Frontend
-   NEXT_PUBLIC_API_URL=http://localhost:4000
-   NEXT_PUBLIC_WS_URL=http://localhost:4000
+   # Frontend (Production with Nginx)
+   # Leave empty - Nginx reverse proxy handles all routing
+   NEXT_PUBLIC_API_URL=
+   NEXT_PUBLIC_WS_URL=
+
+   # OR use your public domain:
+   # NEXT_PUBLIC_API_URL=http://yourdomain.com
+   # NEXT_PUBLIC_WS_URL=http://yourdomain.com
 
    # Restaurant Config
    DEFAULT_MAX_CAPACITY=100
    RESTAURANT_NAME=Gacoan Resto
    ```
+
+   **Important Notes:**
+   - `NEXT_PUBLIC_*` variables are embedded at **build time** in Next.js
+   - For production with Nginx reverse proxy, use empty values or your public domain
+   - Nginx routes `/api/*` to backend and `/` to frontend automatically
+   - Never use Docker internal IPs (like `172.17.0.1`) - they won't work from user browsers
 
 3. **Build dan jalankan dengan Docker Compose**
    ```bash
@@ -142,6 +155,75 @@ npm run dev
   - Mounts local code into containers
   - Hot reload on code changes
   - Slower startup, good for active development
+
+## 🚢 Deployment
+
+### GitHub Actions CI/CD
+
+Repository ini dilengkapi dengan GitHub Actions workflow untuk deployment otomatis ke self-hosted runner.
+
+**Setup:**
+
+1. **Setup self-hosted runner** di server produksi
+   - Follow: [GitHub Self-hosted runners guide](https://docs.github.com/en/actions/hosting-your-own-runners)
+   - Install Docker & Docker Compose di server
+
+2. **Setup environment variables** di server
+   - Copy file `.env` ke `/apps/iot/.env` di server
+   - Pastikan semua environment variables sudah diset dengan benar
+
+3. **Push ke repository**
+   ```bash
+   git add .
+   git commit -m "Your changes"
+   git push
+   ```
+
+4. **Automatic deployment**
+   - GitHub Actions akan otomatis:
+     - Checkout code
+     - Clean old files
+     - Copy files ke `/apps/iot/`
+     - Build & restart Docker containers
+     - Clean up unused Docker resources
+
+**Workflow file:** [.github/workflows/deploy.yml](.github/workflows/deploy.yml)
+
+### Manual Deployment
+
+Jika ingin deploy manual tanpa GitHub Actions:
+
+```bash
+# Di server produksi
+cd /apps/iot
+git pull origin main
+
+# Update .env jika ada perubahan
+nano .env
+
+# Rebuild dan restart services
+docker compose down
+docker compose up -d --build
+docker system prune -af
+```
+
+### Architecture (Production)
+
+```
+User Browser → Nginx (Port 80)
+                 ├── / → Frontend (Next.js)
+                 ├── /api → Backend (Express)
+                 └── /socket.io → Backend (WebSocket)
+
+Backend → PostgreSQL (Port 5432)
+Backend → MQTT Broker (broker.hivemq.com:1883)
+```
+
+**Key Points:**
+- Nginx acts as a reverse proxy, routing all requests
+- Frontend and Backend communicate internally via Docker network
+- Only Nginx port 80 is exposed to public
+- All services are in the same Docker network for internal communication
 
 ## 📊 Database Schema
 
