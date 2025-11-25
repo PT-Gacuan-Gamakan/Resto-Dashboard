@@ -98,17 +98,21 @@ export class MQTTService {
           return;
         }
 
-        // Log to database
-        await this.dbService.logVisitor(type);
+      // Log to database
+      await this.dbService.logVisitor(type);
 
-        // Update current count
-        const currentVisitors = await this.dbService.updateCurrentVisitors(delta);
+      // Update current count
+      const currentVisitors = await this.dbService.updateCurrentVisitors(delta);
 
-        // Publish current capacity to ESP32
-        this.publishCurrentCapacity(currentVisitors);
+      // Get current status to access maxCapacity
+      const currentStatus = await this.dbService.getCurrentStatus();
 
-        // Update hourly stats with Jakarta timezone
-        const now = TimezoneUtil.nowInJakarta();
+      // Publish BOTH current capacity AND max capacity to ESP32
+      this.publishCurrentCapacity(currentVisitors);
+      this.publishMaxCapacity(currentStatus.maxCapacity);
+
+      // Update hourly stats with Jakarta timezone
+      const now = TimezoneUtil.nowInJakarta();
         const jakartaHour = TimezoneUtil.getJakartaHour(now);
         await this.dbService.updateHourlyStats(now, jakartaHour, type, currentVisitors);
 
@@ -124,7 +128,7 @@ export class MQTTService {
           this.eventCallback(event);
         }
 
-        console.log(`[MQTT] Processed ${type} event. Current visitors: ${currentVisitors}`);
+        console.log(`[MQTT] Processed ${type} event. Current visitors: ${currentVisitors}, Max capacity: ${currentStatus.maxCapacity}`);
       } catch (error) {
         console.error('[MQTT] Error processing message:', error);
       }
